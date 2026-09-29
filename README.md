@@ -10,7 +10,7 @@ One web page that zooms, without a cut, from the edge of the observable universe
 
 There are no photographs, textures or libraries. Every frame is drawn with the Canvas 2D API, and in testing on an M5 Mac all ten scenes measured ran at 166 frames per second.
 
-Some of it is live. Planet positions, the Moon's position and phase, and the line between day and night on Earth are all calculated for the moment you open the page.
+Some of it is calculated on the spot. Planet positions, the Moon's position and phase, and the line between day and night on Earth all come from the moment you open the page.
 
 ![Nine of the 27 stops](docs/scenes.jpg)
 
@@ -29,27 +29,27 @@ When I asked for it to go on GitHub, Claude added the English interface, the cap
 - Scroll, pinch, or drag up and down to zoom. ↓ and ↑ jump to the next or previous stop, Space starts or pauses the guided tour, and the scale on the right edge takes you anywhere.
 - Every stop has its own link, such as [`#earth`](https://seanlu2006.github.io/42-orders-of-magnitude/#earth), [`#dna`](https://seanlu2006.github.io/42-orders-of-magnitude/#dna) or [`#proton`](https://seanlu2006.github.io/42-orders-of-magnitude/#proton). The full list is at the bottom.
 - The language follows your browser until you press the toggle: Chinese browsers get Traditional Chinese, and everything else gets English.
-- Sound stays off until you turn it on. The drone's pitch follows the scale, and a note sounds at each stop.
+- Start the journey turns the sound on. Otherwise it stays off until you switch it on in the top bar. The drone's pitch follows the scale, and a note sounds at each stop.
 
 ## What's real
 
 **Calculated when you open the page**
 
 - Planet positions, from J2000 mean orbital elements with Kepler's equation solved for each planet. Inclinations and perturbations are ignored.
-- The Moon's longitude: its mean longitude plus the largest periodic term. At the partial lunar eclipse of 28 August 2026 (04:13 UTC), these formulas put the Moon 179.0° from the Sun, about a degree short of true opposition. The phase drawn on the Moon comes from the same numbers.
+- The Moon's longitude: its mean longitude plus the largest periodic term. At the partial lunar eclipse of 28 August 2026 (04:13 UTC), these formulas put the Moon 179.0° from the Sun, about a degree short of true opposition. The Moon's lit half faces the computed Sun, and the phase and percentage in its label come from the same numbers.
 - The subsolar point, from the Sun's ecliptic longitude and Greenwich sidereal time. It sets the day and night shading on the globe, which is centred on Taipei.
 
 **Real data**
 
-- Coastlines from Natural Earth's 1:50m land polygons. After simplification that's 732 rings and 11,106 points, stored as delta-encoded integers in about 60 KB. Taiwan uses the full-resolution outline.
+- Coastlines from Natural Earth's 1:50m land polygons. After simplification that's 732 rings and 11,106 points, stored as delta-encoded integers in about 60 KB. Taiwan uses the unsimplified 1:50m outline (61 points, smoothed with a spline), and the coasts around it use the simplified data.
 - Distances and right ascensions for 24 named stars, two star clusters and the Orion Nebula, plus the approximate distances of Voyager 1 and 2.
 
 **Modelled from physics or geometry**
 
-- The carbon atom's electron cloud. Every frame, 2,400 electron positions are drawn at random from Slater-type orbital densities (1s, 2s and 2p), with the p orbitals sampled by angle. Colour marks the sign of each p lobe.
+- The carbon atom's electron cloud. Every frame, 2,400 electron positions (900 with reduced motion) are drawn at random from Slater-type orbital densities (1s, 2s and 2p), with the p orbitals sampled by angle. Colour marks the sign of each p lobe.
 - B-form DNA: 1 nm radius, 3.4 nm per turn, 10 base pairs a turn. The two strands are offset by 144°, which is what opens up a major and a minor groove.
 - The Milky Way: four logarithmic spiral arms with a 12° pitch, a bar set 27° from the Sun–centre line, and the Sun 26,000 light-years out between the Sagittarius and Perseus arms. About half a million points, rendered once at load.
-- The other seven planets lined up between Earth and the Moon at their true diameters, 380,010 km in total.
+- The other seven planets side by side at their true diameters, about 380,000 km in all. That only fits between Earth and the Moon when the Moon is near its farthest, which is what the caption says.
 - A carbon-12 nucleus relaxed into a packed cluster, and a proton whose three quarks are joined by a Y-shaped flux tube.
 
 **Illustrative**
@@ -61,11 +61,11 @@ When I asked for it to go on GitHub, Claude added the English interface, the cap
 
 ## How it works
 
-The whole camera is one number, `z`: the base-10 logarithm of how many metres fit across the shorter side of the screen. Pixels per metre is `min(width, height) / 10^z`. Every scene is drawn in real metres around the same point, the one you're zooming into, so the Voyager probes, Taiwan's coastline and a quark all go through the same two-line transform. Double-precision floats cover everything from 10⁻¹⁵ to 10²⁷ without rescaling.
+The whole camera is one number, `z`: the base-10 logarithm of how many metres fit across the shorter side of the screen. Pixels per metre is `min(width, height) / 10^z`. Every scene is drawn in real metres around the same point, the one you're zooming into, so a Voyager probe, a tree in Daan Forest Park and a quark all go through the same two-line transform. Double-precision floats cover everything from 10⁻¹⁵ to 10²⁷ without rescaling.
 
-Each of the 25 layers has a band of `z` where it's visible and fades at both ends. Layers are painted from largest to smallest, so a smaller scale always covers the one it came from. The guided tour is a list of 27 `z` values with an eased flight between each pair.
+Each of the 25 layers has a band of `z` where it's visible and fades at both ends. The layers that cover the whole screen are painted from largest to smallest, so a smaller scale always covers the one it came from. The guided tour is a list of 27 `z` values with an eased flight between each pair.
 
-Randomness comes from a seeded generator (mulberry32), so the procedural scenes look the same on every visit. The expensive ones (the Milky Way, Taiwan's hillshade, the city lights from a distance) are rendered once into offscreen canvases, three layers per frame while the title screen is up. Everything else is redrawn from scratch each frame.
+Randomness comes from a seeded generator (mulberry32), so the procedural scenes are laid out the same way on every visit. The electron cloud and the quark pairs inside the proton keep drawing new random numbers, on purpose. At load, the layers set themselves up three per frame while the title screen is showing, and anything expensive is rendered once into an offscreen canvas: the Milky Way, Taiwan's hillshade, the city lights from a distance, the park's grass and paths, the galaxy sprites and the globe's day and night shading. Whatever moves or has to stay sharp is drawn fresh every frame.
 
 ## Building
 
@@ -80,11 +80,12 @@ To regenerate the coastline data or the images in `docs/`:
 ```sh
 curl -L -o land-50m.json https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-50m.json
 node tools/make-geo.mjs land-50m.json    # writes src/geo.js
-node tools/capture.mjs                   # headless Chrome, writes .capture/
-sh tools/make-media.sh                   # ffmpeg, writes docs/
+node tools/build.mjs                     # rebuilds index.html with the new data
+node tools/capture.mjs                   # screenshots index.html with headless Chrome into .capture/
+sh tools/make-media.sh                   # ffmpeg turns .capture/ into docs/
 ```
 
-This needs Node 22 or newer, because the capture script uses the built-in WebSocket. There are no npm packages.
+This needs Node 22 or newer, because the capture script uses the built-in WebSocket. The capture script looks for Google Chrome in `/Applications` (set `CHROME` to use another path), and `make-media.sh` needs ffmpeg. There are no npm packages.
 
 ## Credits
 
@@ -97,7 +98,7 @@ The code is under the [MIT License](LICENSE).
 <details>
 <summary>All 27 stops</summary>
 
-| Link | Width of view | Stop |
+| Link | Scale | Stop |
 |---|---|---|
 | [`#universe`](https://seanlu2006.github.io/42-orders-of-magnitude/#universe) | 10²⁷ m | The observable universe, ringed by the cosmic microwave background |
 | [`#laniakea`](https://seanlu2006.github.io/42-orders-of-magnitude/#laniakea) | 10²⁵ m | Laniakea, the supercluster the Milky Way belongs to |

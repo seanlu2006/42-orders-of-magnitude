@@ -18,7 +18,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);overflow:hi
 button{font:inherit;color:inherit}
 button:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
 
-.top{position:fixed;left:0;right:0;top:0;padding:calc(14px + var(--sat)) 16px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;z-index:3}
+.top{position:fixed;left:0;right:0;top:0;padding:calc(14px + var(--sat)) 16px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;z-index:6}
 .brand{display:flex;align-items:baseline;gap:8px;pointer-events:auto}
 .brand b{font-family:var(--f-num);font-weight:400;font-size:34px;line-height:1;color:var(--ink)}
 .brand span{font-size:14px;color:var(--mute);letter-spacing:.08em}
@@ -84,7 +84,8 @@ button:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
   #ruler .st::after{display:none}
   .btn{padding:7px 9px;font-size:11px}
   .brand b{font-size:28px}
-  .in{padding-right:34px}
+  .in{padding-right:34px;padding-top:calc(58px + var(--sat))}
+  #intro,#end{align-items:flex-start;overflow-y:auto;background:rgba(4,5,10,.86)}
 }
 @media (max-width:640px){#brandT{display:none}}
 .shot .top,.shot #ruler,.shot #intro,.shot #end,.shot #readout .hm,.shot #bar,.shot #cap .eb,.shot #cap p{display:none!important}
@@ -475,8 +476,11 @@ layer({name:'taiwan',lo:4.3,hi:6.8,
   g.save();path();g.clip();g.imageSmoothingEnabled=true;g.drawImage(hc,0,0,Wc,Hc);g.restore();
   g.strokeStyle='rgba(235,245,235,.55)';g.lineWidth=1.5;path();g.stroke();
   this.cities=[['臺北','Taipei',25.04,121.56],['新竹','Hsinchu',24.80,120.97],['臺中','Taichung',24.15,120.67],['嘉義','Chiayi',23.48,120.45],['臺南','Tainan',22.99,120.21],['高雄','Kaohsiung',22.63,120.30],['花蓮','Hualien',23.99,121.60,1],['臺東','Taitung',22.76,121.14,1],['宜蘭','Yilan',24.75,121.75,1]].map(([nz,ne,la,lo,e])=>[nz,ne,!!e,...twProj(lo,la)]);
-  this.yushan=twProj(120.957,23.47)},
+  this.yushan=twProj(120.957,23.47);
+  // neighbouring coasts (mainland China, Japan, the Philippines) from the simplified data, clamped to a box far outside the view
+  this.near=land.filter(r=>{let a=1e9,b=-1e9,c=1e9,d=-1e9,mx=0,my=0;for(const[lo,la]of r){a=Math.min(a,lo);b=Math.max(b,lo);c=Math.min(c,la);d=Math.max(d,la);mx+=lo/r.length;my+=la/r.length}return b>95&&a<150&&d>0&&c<50&&!(mx>119.9&&mx<122.1&&my>21.8&&my<25.4)}).map(r=>r.map(([lo,la])=>twProj(clamp(lo,95,150),clamp(la,0,50))))},
  draw(a){ctx.globalCompositeOperation='source-over';ctx.globalAlpha=a;const og=ctx.createLinearGradient(0,0,W,0);og.addColorStop(0,'#123a52');og.addColorStop(1,'#071a2b');ctx.fillStyle=og;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#1d3129';ctx.strokeStyle='rgba(205,225,210,.22)';ctx.lineWidth=1;ctx.beginPath();for(const r of this.near){r.forEach(([x,y],i)=>i?ctx.lineTo(X(x),Y(y)):ctx.moveTo(X(x),Y(y)));ctx.closePath()}ctx.fill();ctx.stroke();
   ctx.drawImage(this.img,X(this.x0),Y(this.y1),(this.x1-this.x0)*P,(this.y1-this.y0)*P);
   const la=a*sstep(5.5,5.8,z)*(1-sstep(6.3,6.6,z));
   const ty=Y((23.4365-25.03)*110574);ctx.globalAlpha=la*.6;ctx.strokeStyle='#FFD27A';ctx.setLineDash([6,6]);ctx.beginPath();ctx.moveTo(0,ty);ctx.lineTo(W,ty);ctx.stroke();ctx.setLineDash([]);txt(W-70,ty-12,tr('北回歸線 23.4°N','Tropic of Cancer 23.4°N'),la*.9,12,'#FFD27A','right');
@@ -565,10 +569,14 @@ layer({name:'finger',lo:-3.5,hi:-.85,f:.4,
  init(){const r=rng(101),s=.00047;this.R=[];this.pores=[];
   for(let k=1;k<=40;k++){const pts=[];const gaps=[];const ng=1+(r()*3|0);for(let q=0;q<ng;q++){const g0=r()*TAU;gaps.push([g0,g0+.04+r()*.1])}
    for(let i=0;i<=260;i++){const th=i/260*TAU,rr=k*s*(1+.22*Math.cos(2*(th-.3)))+(noise2(th*2.2,k*.35)-.5)*s*.8,x=.0004+rr*Math.cos(th)*1.25,y=.0002+rr*Math.sin(th)*.85,gap=gaps.some(([g0,g1])=>th>g0&&th<g1);pts.push([x,y,gap]);
-    if(i%Math.max(2,Math.round(260/(k*6)))===0&&!gap)this.pores.push([x,y])}this.R.push(pts)}},
+    if(i%Math.max(2,Math.round(260/(k*6)))===0&&!gap)this.pores.push([x,y])}this.R.push(pts)}
+  // bifurcations: short connectors where a ridge forks into its neighbour
+  const at=(k,th)=>{const rr=k*s*(1+.22*Math.cos(2*(th-.3)))+(noise2(th*2.2,k*.35)-.5)*s*.8;return[.0004+rr*Math.cos(th)*1.25,.0002+rr*Math.sin(th)*.85]};
+  this.F=[];for(let k=2;k<39;k++)if(r()<.45){const th=r()*TAU,d=(.05+r()*.07)*(r()<.5?-1:1),f=[];for(let i=0;i<=10;i++){const t=i/10,e=t*t*(3-2*t),p=at(k,th+d*t),q=at(k+1,th+d*t);f.push([lerp(p[0],q[0],e),lerp(p[1],q[1],e)])}this.F.push(f)}},
  draw(a){ctx.save();taper(-.078,0,.0088,.003,0,.0083);ctx.clip();ctx.globalCompositeOperation='source-over';
   ctx.globalAlpha=a;ctx.fillStyle='#c48c6b';ctx.fillRect(0,0,W,H);
   const lw=Math.max(.00026*P,.5),pth=new Path2D();for(const R of this.R){let pen=false;for(const[x,y,g]of R){if(g){pen=false;continue}const sx=X(x),sy=Y(y);pen?pth.lineTo(sx,sy):pth.moveTo(sx,sy);pen=true}}
+  for(const f of this.F)f.forEach(([x,y],i)=>i?pth.lineTo(X(x),Y(y)):pth.moveTo(X(x),Y(y)));
   ctx.lineCap='round';ctx.lineJoin='round';ctx.translate(0,lw*.25);ctx.strokeStyle='#a16d51';ctx.lineWidth=lw*1.1;ctx.stroke(pth);ctx.translate(0,-lw*.25);ctx.strokeStyle='#eec2a1';ctx.lineWidth=lw;ctx.stroke(pth);
   const pa=a*sstep(-1.9,-2.4,z);if(pa>0){ctx.globalAlpha=pa;ctx.fillStyle='#7a4432';const pr=Math.max(.00005*P,.5);ctx.beginPath();for(const[x,y]of this.pores){const sx=X(x),sy=Y(y);if(!onS(sx,sy,4))continue;ctx.moveTo(sx+pr,sy);ctx.arc(sx,sy,pr,0,TAU)}ctx.fill()}
   ctx.restore()}});

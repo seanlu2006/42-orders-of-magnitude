@@ -5,7 +5,7 @@
 //
 // Output: two strings of delta-encoded integer coordinates, rings separated by "|".
 //   GEO_LAND  every land ring, simplified with Douglas-Peucker at 0.12°, in tenths of a degree
-//   GEO_TW    Taiwan and Penghu at full 1:50m detail, in thousandths of a degree
+//   GEO_TW    Taiwan's main island, unsimplified 1:50m, in thousandths of a degree
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +48,7 @@ const encode = (rs, mult) => rs.map(r => {
 
 const land = rings.map(r => simplifyRing(r, 0.12)).filter(r => r.length >= 4);
 const centroid = r => [r.reduce((s, p) => s + p[0], 0) / r.length, r.reduce((s, p) => s + p[1], 0) / r.length];
-const taiwan = rings.filter(r => { const [cx, cy] = centroid(r); return cx > 119 && cx < 122.5 && cy > 21.5 && cy < 25.8; });
+const taiwan = rings.filter(r => { const [cx, cy] = centroid(r); return cx > 119.3 && cx < 122.2 && cy > 21.8 && cy < 25.35; });
 
 fs.writeFileSync(path.join(root, 'src/geo.js'), `const GEO_LAND="${encode(land, 10)}";\nconst GEO_TW="${encode(taiwan, 1000)}";\n`);
 console.log(`land: ${land.length} rings, ${land.reduce((s, r) => s + r.length, 0)} points · taiwan: ${taiwan.length} rings`);
