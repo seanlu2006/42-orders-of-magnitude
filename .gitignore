@@ -1,0 +1,5 @@
+.capture/
+.capture.log
+dist/
+land-50m.json
+.DS_Store
